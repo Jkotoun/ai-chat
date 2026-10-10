@@ -1,0 +1,9 @@
+[project]
+name = "ai-chat-backend"
+version = "0.1.0"
+description = "AI support chat backend: FastAPI + Postgres/pgvector RAG"
+requires-python = ">=3.13"
+dependencies = []
+
+[tool.uv]
+package = false
