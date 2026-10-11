@@ -1,54 +1,30 @@
 import asyncio
 import math
 import threading
-from collections.abc import Iterable
-from typing import Any, cast
 
-import numpy as np
 import pytest
-from fastembed import TextEmbedding
 
 from app.db.models import EMBEDDING_DIM, EMBEDDING_QUERY_INSTRUCTION
 from app.services.embeddings import Embedder
-
-
-class FakeModel:
-    """Records which thread inference runs on."""
-
-    model_name = "fake"
-
-    def __init__(self, dim: int = EMBEDDING_DIM) -> None:
-        self.embedding_size = dim
-        self.threads: list[int] = []
-        self.inputs: list[list[str]] = []
-
-    def embed(self, texts: list[str]) -> Iterable[np.ndarray[Any, Any]]:
-        self.threads.append(threading.get_ident())
-        self.inputs.append(texts)
-        for i, _ in enumerate(texts):
-            yield np.full(self.embedding_size, i, dtype=np.float32)
-
-
-def make_embedder(model: FakeModel) -> Embedder:
-    return Embedder(cast(TextEmbedding, model))
+from tests.mocks import MockModel, make_embedder
 
 
 async def test_inference_runs_off_the_event_loop_thread() -> None:
-    model = FakeModel()
+    model = MockModel()
     embedder = make_embedder(model)
 
     query = await embedder.embed_query("hi")
     docs = await embedder.embed_documents(["a", "b"])
 
-    assert query == [0.0] * EMBEDDING_DIM
-    assert docs == [[0.0] * EMBEDDING_DIM, [1.0] * EMBEDDING_DIM]
+    assert query == [1.0] * EMBEDDING_DIM
+    assert docs == [[1.0] * EMBEDDING_DIM, [2.0] * EMBEDDING_DIM]
     assert all(isinstance(x, float) for x in query)
     assert threading.get_ident() not in model.threads
     assert len(model.threads) == 2
 
 
 async def test_query_gets_retrieval_instruction_documents_do_not() -> None:
-    model = FakeModel()
+    model = MockModel()
     embedder = make_embedder(model)
 
     await embedder.embed_query("hi")
@@ -58,7 +34,7 @@ async def test_query_gets_retrieval_instruction_documents_do_not() -> None:
 
 
 async def test_embed_documents_empty_skips_model() -> None:
-    model = FakeModel()
+    model = MockModel()
 
     assert await make_embedder(model).embed_documents([]) == []
     assert model.threads == []
@@ -66,12 +42,12 @@ async def test_embed_documents_empty_skips_model() -> None:
 
 async def test_embed_documents_rejects_bare_string() -> None:
     with pytest.raises(TypeError):
-        await make_embedder(FakeModel()).embed_documents("hello")
+        await make_embedder(MockModel()).embed_documents("hello")
 
 
 def test_rejects_model_with_wrong_dimension() -> None:
     with pytest.raises(ValueError, match="768-dim"):
-        make_embedder(FakeModel(dim=768))
+        make_embedder(MockModel(dim=768))
 
 
 @pytest.fixture(scope="module")

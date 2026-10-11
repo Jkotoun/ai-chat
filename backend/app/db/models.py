@@ -11,6 +11,7 @@ EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 EMBEDDING_DIM = 384
 # Recommended by BAAI for bge v1.5 short-query-to-passage retrieval; fastembed doesn't add it.
 EMBEDDING_QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
+TITLE_MAX_LENGTH = 512
 
 
 class Document(Base):
@@ -20,7 +21,7 @@ class Document(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     source: Mapped[str] = mapped_column(String(32), index=True)  # "faq" | "tos"
-    title: Mapped[str] = mapped_column(String(512))
+    title: Mapped[str] = mapped_column(String(TITLE_MAX_LENGTH))
     content: Mapped[str] = mapped_column(Text)
     embedding: Mapped[list[float]] = mapped_column(Vector(EMBEDDING_DIM))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

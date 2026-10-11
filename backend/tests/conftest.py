@@ -1,10 +1,21 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 
 import pytest
+import structlog
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.types import Receive, Scope, Send
 
+from app.config import get_settings
+from app.db.session import create_engine
 from app.main import app
+
+
+@pytest.fixture(autouse=True)
+def reset_logging() -> Iterator[None]:
+    """configure_logging() is global; don't leak it (e.g. its level) into other tests."""
+    yield
+    structlog.reset_defaults()
 
 
 @pytest.fixture
@@ -20,3 +31,18 @@ async def client() -> AsyncIterator[AsyncClient]:
             transport=ASGITransport(app=app_with_state), base_url="http://test"
         ) as client:
             yield client
+
+
+@pytest.fixture
+async def db_session() -> AsyncIterator[AsyncSession]:
+    """Session inside a transaction that is rolled back, so tests leave the DB untouched."""
+    engine = create_engine(get_settings().database_url)
+    async with engine.connect() as connection:
+        transaction = await connection.begin()
+        session = AsyncSession(bind=connection, join_transaction_mode="create_savepoint")
+        try:
+            yield session
+        finally:
+            await session.close()
+            await transaction.rollback()
+    await engine.dispose()
