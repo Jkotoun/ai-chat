@@ -1,6 +1,6 @@
 # ai-chat
 
-AI support chat over a FAQ / Terms of Service knowledge base. See [plan.md](plan.md) for the roadmap.
+AI support chat over a FAQ / Terms of Service knowledge base.
 
 Monorepo with two independent projects and no shared tooling:
 
