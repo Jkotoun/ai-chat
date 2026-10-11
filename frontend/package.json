@@ -20,7 +20,7 @@
     "@types/react-dom": "^19",
     "oxlint": "^1.87.0",
     "tailwindcss": "^4",
-    "typescript": "^7.0.2"
+    "typescript": "^6.0.3"
   },
   "engines": {
     "node": ">=24"
