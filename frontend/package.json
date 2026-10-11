@@ -9,23 +9,28 @@
     "lint": "oxlint",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
+    "test": "vitest run",
     "generate:api": "openapi-ts"
   },
   "dependencies": {
+    "@emotion/cache": "^11.14.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^9.5.0",
+    "@mui/material-nextjs": "^9.5.0",
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "0.99.0",
-    "@tailwindcss/turbopack": "^4",
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "oxfmt": "0.72.0",
     "oxlint": "^1.87.0",
-    "tailwindcss": "^4",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.3"
   },
   "engines": {
     "node": ">=24"

@@ -37,3 +37,17 @@ async def test_ready_returns_503_when_database_down(client: AsyncClient) -> None
 
     assert response.status_code == 503
     assert response.json() == {"detail": "database unavailable"}
+
+
+async def test_cors_allows_frontend_origin(client: AsyncClient) -> None:
+    response = await client.options(
+        "/chat",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
