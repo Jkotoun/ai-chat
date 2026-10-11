@@ -49,6 +49,8 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      FASTEMBED_CACHE_PATH: ${{ github.workspace }}/.fastembed-cache
     services:
       postgres:
         image: pgvector/pgvector:pg18
@@ -75,6 +77,13 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --frozen
+
+      - name: Cache embedding models
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.FASTEMBED_CACHE_PATH }}
+          key: fastembed-${{ hashFiles('backend/uv.lock') }}
+          restore-keys: fastembed-
 
       - name: Create .env from example
         run: cp .env.example .env

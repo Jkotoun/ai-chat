@@ -74,9 +74,9 @@ The system prompt instructs the model to answer only from the provided context a
 ## Roadmap
 
 ### v1: minimal
-- [ ] Project setup (`uv`, `ruff`, `pytest`, Docker Compose with pgvector)
-- [ ] Config, DB session, `documents` model, Alembic migration (extension + table)
-- [ ] Embedding service (fastembed), run via `asyncio.to_thread` so the blocking model call doesn't block the event loop
+- [x] Project setup (`uv`, `ruff`, `pytest`, Docker Compose with pgvector)
+- [x] Config, DB session, `documents` model, Alembic migration (extension + table)
+- [x] Embedding service (fastembed), run via `asyncio.to_thread` so the blocking model call doesn't block the event loop
 - [ ] Ingestion CLI with sample FAQ + ToS data
 - [ ] Single-stage retrieval (top 5 by cosine similarity)
 - [ ] Groq LLM client, `POST /chat` with SSE streaming and sources
