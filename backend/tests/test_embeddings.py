@@ -1,36 +1,12 @@
 import asyncio
 import math
 import threading
-from collections.abc import Iterable
-from typing import Any, cast
 
-import numpy as np
 import pytest
-from fastembed import TextEmbedding
 
 from app.db.models import EMBEDDING_DIM, EMBEDDING_QUERY_INSTRUCTION
 from app.services.embeddings import Embedder
-
-
-class MockModel:
-    """Records which thread inference runs on."""
-
-    model_name = "mock"
-
-    def __init__(self, dim: int = EMBEDDING_DIM) -> None:
-        self.embedding_size = dim
-        self.threads: list[int] = []
-        self.inputs: list[list[str]] = []
-
-    def embed(self, texts: list[str]) -> Iterable[np.ndarray[Any, Any]]:
-        self.threads.append(threading.get_ident())
-        self.inputs.append(texts)
-        for i, _ in enumerate(texts):
-            yield np.full(self.embedding_size, i, dtype=np.float32)
-
-
-def make_embedder(model: MockModel) -> Embedder:
-    return Embedder(cast(TextEmbedding, model))
+from tests.mocks import MockModel, make_embedder
 
 
 async def test_inference_runs_off_the_event_loop_thread() -> None:
@@ -40,8 +16,8 @@ async def test_inference_runs_off_the_event_loop_thread() -> None:
     query = await embedder.embed_query("hi")
     docs = await embedder.embed_documents(["a", "b"])
 
-    assert query == [0.0] * EMBEDDING_DIM
-    assert docs == [[0.0] * EMBEDDING_DIM, [1.0] * EMBEDDING_DIM]
+    assert query == [1.0] * EMBEDDING_DIM
+    assert docs == [[1.0] * EMBEDDING_DIM, [2.0] * EMBEDDING_DIM]
     assert all(isinstance(x, float) for x in query)
     assert threading.get_ident() not in model.threads
     assert len(model.threads) == 2

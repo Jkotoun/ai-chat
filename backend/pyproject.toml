@@ -9,6 +9,7 @@ dependencies = [
     "fastapi>=0.143.0",
     "fastembed>=0.9.0",
     "groq>=1.7.0",
+    "markdown-it-py>=4.2.0",
     "pgvector>=0.5.1",
     "pydantic-settings>=2.15.0",
     "sqlalchemy[asyncio]>=2.1.4",

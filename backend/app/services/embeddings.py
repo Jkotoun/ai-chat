@@ -6,6 +6,9 @@ from fastembed import TextEmbedding
 
 from app.db.models import EMBEDDING_DIM, EMBEDDING_MODEL, EMBEDDING_QUERY_INSTRUCTION
 
+# Inputs are truncated to this many tokens; token_count() also caps at it.
+MAX_TOKENS = 512
+
 
 class Embedder:
     """Text embeddings via fastembed.
@@ -42,6 +45,10 @@ class Embedder:
         if not texts:
             return []
         return await asyncio.to_thread(self._embed_documents, texts)
+
+    async def count_tokens(self, texts: Sequence[str]) -> list[int]:
+        """Token count per text, capped at MAX_TOKENS (a count of MAX_TOKENS means truncated)."""
+        return await asyncio.to_thread(lambda: [self._model.token_count(t) for t in texts])
 
     def _embed_query(self, query: str) -> list[float]:
         [vector] = self._model.embed([EMBEDDING_QUERY_INSTRUCTION + query])
