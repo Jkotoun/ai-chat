@@ -48,6 +48,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[State]:
         await engine.dispose()
 
 
-app = FastAPI(title="AI Chat", lifespan=lifespan)
+# Operation IDs become the generated frontend client's function names.
+app = FastAPI(
+    title="AI Chat", lifespan=lifespan, generate_unique_id_function=lambda route: route.name
+)
 app.include_router(health.router)
 app.include_router(chat.router)

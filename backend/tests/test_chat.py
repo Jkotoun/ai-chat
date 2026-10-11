@@ -18,12 +18,13 @@ from tests.db import add_documents
 from tests.mocks import MockLLM, MockModel, make_embedder, unit_vector
 
 
-def parse_sse(body: str) -> list[tuple[str, Any]]:
-    events = []
-    for block in body.strip().split("\n\n"):
-        fields = dict(line.split(": ", 1) for line in block.splitlines())
-        events.append((fields["event"], json.loads(fields["data"])))
-    return events
+def parse_sse(body: str) -> list[dict[str, Any]]:
+    """The JSON `data` of each event."""
+    return [json.loads(block.removeprefix("data: ")) for block in body.strip().split("\n\n")]
+
+
+def event_types(body: str) -> list[str]:
+    return [event["type"] for event in parse_sse(body)]
 
 
 @pytest.fixture
@@ -56,13 +57,14 @@ async def test_streams_sources_then_tokens(
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
+    assert event_types(response.text) == ["sources", "token", "token", "done"]
     events = parse_sse(response.text)
-    assert [e for e, _ in events] == ["sources", "token", "token", "done"]
-    [source] = events[0][1]
+    [source] = events[0]["sources"]
     assert source["title"] == "Reset password"
     assert source["source"] == "faq"
     assert source["score"] == pytest.approx(1.0)
-    assert "".join(data for event, data in events if event == "token") == "Click Forgot password."
+    tokens = [event["text"] for event in events if event["type"] == "token"]
+    assert "".join(tokens) == "Click Forgot password."
     assert mock_llm.messages[-1] == {"role": "user", "content": "How do I reset my password?"}
     assert "Reset password content" in str(mock_llm.messages[0]["content"])
 
@@ -75,8 +77,7 @@ async def test_llm_failure_ends_stream_with_error_event(
 
     response = await client.post("/chat", json={"question": "How do I reset my password?"})
 
-    events = parse_sse(response.text)
-    assert [e for e, _ in events] == ["sources", "token", "error"]
+    assert event_types(response.text) == ["sources", "token", "error"]
     assert "boom" not in response.text
 
 
@@ -92,7 +93,7 @@ async def test_failure_before_sources_sends_only_error(
 
     response = await client.post("/chat", json={"question": "How do I reset my password?"})
 
-    assert [e for e, _ in parse_sse(response.text)] == ["error"]
+    assert event_types(response.text) == ["error"]
 
 
 async def test_llm_client_without_api_key_fails_clearly() -> None:
@@ -156,3 +157,13 @@ async def test_llm_client_yields_deltas_from_groq_stream() -> None:
     body = json.loads(requests[0].content)
     assert body["model"] == "test-model"
     assert body["stream"] is True
+
+
+def test_openapi_lists_stream_event_types() -> None:
+    """Client generators read the 3.1 `schema`, not FastAPI's 3.2 `itemSchema`."""
+    content = app.openapi()["paths"]["/chat"]["post"]["responses"]["200"]["content"]
+
+    refs = [schema["$ref"] for schema in content["text/event-stream"]["schema"]["oneOf"]]
+
+    events = ["SourcesEvent", "TokenEvent", "DoneEvent", "ErrorEvent"]
+    assert refs == [f"#/components/schemas/{name}" for name in events]
