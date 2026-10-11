@@ -1,11 +1,14 @@
 from typing import Annotated
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
+
+logger = structlog.get_logger()
 
 router = APIRouter(tags=["health"])
 
@@ -22,5 +25,6 @@ async def ready(session: Annotated[AsyncSession, Depends(get_session)]) -> dict[
     try:
         await session.execute(text("SELECT 1"))
     except (SQLAlchemyError, OSError) as exc:
+        logger.warning("readiness_check_failed", error=repr(exc))
         raise HTTPException(status_code=503, detail="database unavailable") from exc
     return {"status": "ready"}
