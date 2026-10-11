@@ -40,7 +40,11 @@ target-version = "py314"
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "ASYNC", "SIM", "RUF"]
 
+[tool.ruff.lint.isort]
+known-third-party = ["alembic"]
+
 [tool.mypy]
 python_version = "3.14"
 strict = true
 plugins = ["pydantic.mypy"]
+exclude = ["alembic/"]

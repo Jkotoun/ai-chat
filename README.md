@@ -11,8 +11,8 @@ Monorepo with two independent projects and no shared tooling:
 
 ```sh
 cp backend/.env.example backend/.env
-docker compose up -d db                                      # Postgres
-(cd backend && uv sync && uv run uvicorn app.main:app --reload)  # http://localhost:8000/docs
+docker compose up -d db                                      # Postgres + pgvector
+(cd backend && uv sync && uv run alembic upgrade head && uv run uvicorn app.main:app --reload)
 # in a second terminal:
 cd frontend && pnpm install && pnpm dev                      # http://localhost:3000
 ```
