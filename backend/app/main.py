@@ -5,6 +5,7 @@ from typing import TypedDict
 import httpx
 import structlog
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from groq import AsyncGroq
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -51,6 +52,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[State]:
 # Operation IDs become the generated frontend client's function names.
 app = FastAPI(
     title="AI Chat", lifespan=lifespan, generate_unique_id_function=lambda route: route.name
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=get_settings().cors_origins,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 app.include_router(health.router)
 app.include_router(chat.router)
