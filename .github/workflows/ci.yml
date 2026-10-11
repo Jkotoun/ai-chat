@@ -141,6 +141,9 @@ jobs:
             echo "src/client is out of date, run pnpm generate:api" && exit 1
           fi
 
+      - name: Check formatting
+        run: pnpm format:check
+
       - name: Lint
         run: pnpm lint
 

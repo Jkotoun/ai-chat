@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "oxlint",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "generate:api": "openapi-ts"
   },
   "dependencies": {
@@ -20,6 +22,7 @@
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "oxfmt": "0.72.0",
     "oxlint": "^1.87.0",
     "tailwindcss": "^4",
     "typescript": "^6.0.3"
