@@ -1,35 +1,32 @@
+import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import ChatBubble from "./ChatBubble";
 import type { Answer } from "./messages";
+import SourceChips from "./SourceChips";
+import TypingDots from "./TypingDots";
 
 type AnswerProps = { answer: Answer };
 
 function AnswerText({ answer }: AnswerProps) {
-  if (answer.text) return <Typography sx={{ whiteSpace: "pre-wrap" }}>{answer.text}</Typography>;
-  if (answer.status === "streaming") return <Typography color="text.secondary">…</Typography>;
+  if (answer.text) {
+    return <Typography sx={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{answer.text}</Typography>;
+  }
+  if (answer.status === "streaming") return <TypingDots />;
   return null;
-}
-
-function Sources({ answer }: AnswerProps) {
-  if (answer.sources.length === 0) return null;
-  const titles = answer.sources.map((source) => source.title);
-  return (
-    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-      Sources: {titles.join(" · ")}
-    </Typography>
-  );
 }
 
 export default function AssistantMessage({ answer }: AnswerProps) {
   return (
-    <ChatBubble side="left" sx={{ bgcolor: "action.hover" }}>
-      <AnswerText answer={answer} />
-      {answer.error && (
-        <Typography variant="body2" color="error">
-          {answer.error}
-        </Typography>
-      )}
-      <Sources answer={answer} />
-    </ChatBubble>
+    <Stack spacing={1} sx={{ alignSelf: "flex-start", maxWidth: "85%" }}>
+      <ChatBubble side="left" sx={{ maxWidth: "none", bgcolor: "action.hover" }}>
+        <AnswerText answer={answer} />
+        {answer.error && (
+          <Typography variant="body2" color="error">
+            {answer.error}
+          </Typography>
+        )}
+      </ChatBubble>
+      <SourceChips sources={answer.sources} />
+    </Stack>
   );
 }
