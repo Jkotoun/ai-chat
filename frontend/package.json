@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "oxlint"
+    "lint": "oxlint",
+    "generate:api": "openapi-ts"
   },
   "dependencies": {
     "next": "16.4.0",
@@ -14,13 +15,14 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@hey-api/openapi-ts": "0.99.0",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "oxlint": "^1.87.0",
     "tailwindcss": "^4",
-    "typescript": "^7.0.2"
+    "typescript": "^6.0.3"
   },
   "engines": {
     "node": ">=24"
