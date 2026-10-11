@@ -1,6 +1,7 @@
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import ChatBubble from "./ChatBubble";
+import MarkdownText from "./MarkdownText";
 import type { Answer } from "./messages";
 import SourceChips from "./SourceChips";
 import TypingDots from "./TypingDots";
@@ -8,9 +9,7 @@ import TypingDots from "./TypingDots";
 type AnswerProps = { answer: Answer };
 
 function AnswerText({ answer }: AnswerProps) {
-  if (answer.text) {
-    return <Typography sx={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{answer.text}</Typography>;
-  }
+  if (answer.text) return <MarkdownText text={answer.text} />;
   if (answer.status === "streaming") return <TypingDots />;
   return null;
 }
