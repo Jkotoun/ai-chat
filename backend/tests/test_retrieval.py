@@ -1,32 +1,12 @@
 import pytest
-from sqlalchemy import delete, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import BACKEND_DIR
-from app.db.models import Document
 from app.ingest import ingest, load_directory
 from app.services.embeddings import Embedder
 from app.services.retrieval import MAX_K, TOP_K, retrieve
+from tests.db import add_documents, clear_documents
 from tests.mocks import MockModel, make_embedder, unit_vector
-
-
-async def clear_documents(session: AsyncSession) -> None:
-    """Empty the table within the test's rolled-back transaction, so dev data doesn't interfere.
-
-    HNSW would still visit the deleted (invisible) dev rows and return fewer than k
-    results, so force exact search.
-    """
-    await session.execute(text("SET LOCAL enable_indexscan = off"))
-    await session.execute(delete(Document))
-
-
-async def add_documents(session: AsyncSession, embeddings: dict[str, list[float]]) -> None:
-    await clear_documents(session)
-    session.add_all(
-        Document(source="faq", title=title, content=f"{title} content", embedding=embedding)
-        for title, embedding in embeddings.items()
-    )
-    await session.flush()
 
 
 async def test_returns_top_k_by_cosine_similarity(db_session: AsyncSession) -> None:

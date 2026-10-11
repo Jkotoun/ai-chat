@@ -12,7 +12,8 @@ class Settings(BaseSettings):
     database_url: str
 
     groq_api_key: str = ""
-    groq_model: str = "llama-3.3-70b-versatile"
+    groq_model: str = "openai/gpt-oss-120b"
+    groq_read_timeout_seconds: float = 30  # per read; a stream has no total cap
 
     log_level: str = "INFO"
 
