@@ -123,6 +123,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Check the generated API client matches the backend
+        env:
+          # Required by the backend settings; exporting the spec doesn't connect.
+          DATABASE_URL: postgresql+asyncpg://unused
+        run: |
+          (cd ../backend && uv run --frozen python -m app.export_openapi) > "$RUNNER_TEMP/openapi.json"
+          OPENAPI_URL="$RUNNER_TEMP/openapi.json" pnpm generate:api
+          if [ -n "$(git status --porcelain src/client)" ]; then
+            git status --short src/client
+            echo "src/client is out of date, run pnpm generate:api" && exit 1
+          fi
+
       - name: Lint
         run: pnpm lint
 
