@@ -24,4 +24,12 @@ uv run ruff format --check . && uv run ruff check . && uv run mypy .
 uv run pytest
 ```
 
+Migrations (run in `backend/`; the DB must be at head first):
+
+```sh
+uv run alembic upgrade head                                  # apply pending migrations
+uv run alembic check                                         # fails if models changed without a migration
+uv run alembic revision --autogenerate -m "add users"        # generate one, then review it
+```
+
 Frontend: `pnpm lint` in `frontend/`.
