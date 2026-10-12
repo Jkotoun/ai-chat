@@ -3,7 +3,7 @@ from collections.abc import AsyncIterator, Iterator
 import pytest
 import structlog
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from starlette.types import Receive, Scope, Send
 
 from app.config import get_settings
@@ -46,3 +46,9 @@ async def db_session() -> AsyncIterator[AsyncSession]:
             await session.close()
             await transaction.rollback()
     await engine.dispose()
+
+
+@pytest.fixture
+def db_session_factory(db_session: AsyncSession) -> async_sessionmaker[AsyncSession]:
+    """Sessions that share db_session's rolled-back transaction."""
+    return async_sessionmaker(bind=db_session.bind, join_transaction_mode="create_savepoint")

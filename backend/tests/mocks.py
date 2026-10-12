@@ -1,6 +1,6 @@
 import threading
 from collections.abc import AsyncIterator, Iterable, Sequence
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import numpy as np
 from fastembed import TextEmbedding
@@ -8,6 +8,7 @@ from groq.types.chat import ChatCompletionMessageParam
 
 from app.db.models import EMBEDDING_DIM, EMBEDDING_QUERY_INSTRUCTION
 from app.services.embeddings import Embedder
+from app.services.retrieval import RetrievedDocument
 
 
 class MockModel:
@@ -58,3 +59,30 @@ class MockLLM:
             yield delta
         if self.error:
             raise self.error
+
+
+class MockChatService:
+    """Stand-in for ChatService; returns fixed sources and deltas, optionally failing."""
+
+    def __init__(
+        self,
+        documents: list[RetrievedDocument] | None = None,
+        deltas: list[str] | None = None,
+        error: Exception | None = None,
+        fail_at: Literal["sources", "answer"] = "answer",
+    ) -> None:
+        self.documents = documents or []
+        self.llm = MockLLM(deltas or [], error if fail_at == "answer" else None)
+        self.sources_error = error if fail_at == "sources" else None
+        self.questions: list[str] = []
+
+    async def find_sources(self, question: str) -> list[RetrievedDocument]:
+        self.questions.append(question)
+        if self.sources_error:
+            raise self.sources_error
+        return self.documents
+
+    def stream_answer(
+        self, question: str, documents: Sequence[RetrievedDocument]
+    ) -> AsyncIterator[str]:
+        return self.llm.stream([])

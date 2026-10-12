@@ -1,8 +1,11 @@
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
 
 from groq.types.chat import ChatCompletionMessageParam
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.services.retrieval import RetrievedDocument
+from app.services.embeddings import Embedder
+from app.services.llm import LLMClient
+from app.services.retrieval import RetrievedDocument, retrieve
 
 SYSTEM_PROMPT = """\
 You are a customer support assistant.
@@ -23,3 +26,28 @@ def build_messages(
         {"role": "system", "content": f"{SYSTEM_PROMPT}\n\nContext:\n{context or '(none)'}"},
         {"role": "user", "content": question},
     ]
+
+
+class ChatService:
+    """Answers questions from the knowledge base."""
+
+    def __init__(
+        self,
+        session_factory: async_sessionmaker[AsyncSession],
+        embedder: Embedder,
+        llm: LLMClient,
+    ) -> None:
+        self._session_factory = session_factory
+        self._embedder = embedder
+        self._llm = llm
+
+    async def find_sources(self, question: str) -> list[RetrievedDocument]:
+        # Short-lived session, so no DB connection is held while the LLM streams.
+        async with self._session_factory() as session:
+            return await retrieve(session, self._embedder, question)
+
+    def stream_answer(
+        self, question: str, documents: Sequence[RetrievedDocument]
+    ) -> AsyncIterator[str]:
+        """The answer's text deltas, grounded in `documents`."""
+        return self._llm.stream(build_messages(question, documents))

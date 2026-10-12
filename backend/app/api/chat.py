@@ -5,13 +5,8 @@ import structlog
 from fastapi import APIRouter
 from fastapi.sse import EventSourceResponse
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.api.deps import EmbedderDep, LLMDep, SessionFactoryDep
-from app.services.chat import build_messages
-from app.services.embeddings import Embedder
-from app.services.llm import LLMClient
-from app.services.retrieval import retrieve
+from app.api.deps import ChatServiceDep
 
 logger = structlog.get_logger()
 
@@ -66,21 +61,6 @@ def chat_event_models() -> tuple[type[ChatEventBase], ...]:
     return get_args(union)
 
 
-async def stream_answer(
-    question: str,
-    embedder: Embedder,
-    llm: LLMClient,
-    session_factory: async_sessionmaker[AsyncSession],
-) -> AsyncIterator[SourcesEvent | TokenEvent]:
-    """`sources` for the question, then a `token` per answer text delta."""
-    # Short-lived session, so no DB connection is held while the LLM streams.
-    async with session_factory() as session:
-        documents = await retrieve(session, embedder, question)
-    yield SourcesEvent(sources=[Source.model_validate(d, from_attributes=True) for d in documents])
-    async for delta in llm.stream(build_messages(question, documents)):
-        yield TokenEvent(text=delta)
-
-
 # FastAPI only describes the stream items with OpenAPI 3.2's `itemSchema`, which client
 # generators don't read yet, so the plain 3.1 `schema` lists the event types too.
 STREAM_SCHEMA = {
@@ -93,20 +73,19 @@ STREAM_SCHEMA = {
     response_class=EventSourceResponse,
     responses={200: {"content": {"text/event-stream": {"schema": STREAM_SCHEMA}}}},
 )
-async def chat(
-    body: ChatRequest,
-    embedder: EmbedderDep,
-    llm: LLMDep,
-    session_factory: SessionFactoryDep,
-) -> AsyncIterator[ChatEvent]:
+async def chat(body: ChatRequest, chat_service: ChatServiceDep) -> AsyncIterator[ChatEvent]:
     """Answer from the knowledge base, streamed as SSE.
 
     Sends `sources`, then a `token` per text delta, then `done`; `error` replaces
     the rest if something fails mid-stream.
     """
     try:
-        async for event in stream_answer(body.question, embedder, llm, session_factory):
-            yield event
+        documents = await chat_service.find_sources(body.question)
+        yield SourcesEvent(
+            sources=[Source.model_validate(d, from_attributes=True) for d in documents]
+        )
+        async for delta in chat_service.stream_answer(body.question, documents):
+            yield TokenEvent(text=delta)
     except Exception:
         # Headers are already sent, so report the failure in-band.
         logger.exception("chat_failed")

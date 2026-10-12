@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.services.chat import ChatService
 from app.services.embeddings import Embedder
 from app.services.llm import LLMClient
 
@@ -37,3 +38,12 @@ async def get_session(session_factory: SessionFactoryDep) -> AsyncIterator[Async
 
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
+
+
+def get_chat_service(
+    session_factory: SessionFactoryDep, embedder: EmbedderDep, llm: LLMDep
+) -> ChatService:
+    return ChatService(session_factory, embedder, llm)
+
+
+ChatServiceDep = Annotated[ChatService, Depends(get_chat_service)]
