@@ -23,7 +23,7 @@ services:
     environment:
       # Overrides the localhost URL from backend/.env.
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/ai_chat
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    command: sh -c "alembic upgrade head && uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000"
     volumes:
       - fastembed_cache:/home/appuser/.cache/fastembed
     ports:

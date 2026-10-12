@@ -4,8 +4,12 @@ from typing import Self
 
 from fastembed import TextEmbedding
 
-from app.db.models import EMBEDDING_DIM, EMBEDDING_MODEL, EMBEDDING_QUERY_INSTRUCTION
+from app.db.models import EMBEDDING_DIM
 
+# Changing the model means re-ingesting the documents.
+EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+# Recommended by BAAI for bge v1.5 short-query-to-passage retrieval; fastembed doesn't add it.
+EMBEDDING_QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
 # Inputs are truncated to this many tokens; token_count() also caps at it.
 MAX_TOKENS = 512
 

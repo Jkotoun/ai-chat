@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, ServerSentEventsResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { ChatData, ChatErrors, ChatResponse, ChatResponses, HealthData, HealthResponses, ReadyData, ReadyResponses } from './types.gen';
+import type { ChatData, ChatErrors, ChatResponse, ChatResponses, HealthData, HealthResponses, ReadyData, ReadyErrors, ReadyResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -30,7 +30,7 @@ export const health = <ThrowOnError extends boolean = false>(options?: Options<H
  *
  * Readiness probe: the database is reachable.
  */
-export const ready = <ThrowOnError extends boolean = false>(options?: Options<ReadyData, ThrowOnError>): RequestResult<ReadyResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ReadyResponses, unknown, ThrowOnError>({ url: '/health/ready', ...options });
+export const ready = <ThrowOnError extends boolean = false>(options?: Options<ReadyData, ThrowOnError>): RequestResult<ReadyResponses, ReadyErrors, ThrowOnError> => (options?.client ?? client).get<ReadyResponses, ReadyErrors, ThrowOnError>({ url: '/health/ready', ...options });
 
 /**
  * Chat

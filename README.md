@@ -36,7 +36,7 @@ cd backend
 uv sync
 uv run alembic upgrade head                                  # create the schema
 uv run python -m app.ingest data/                            # load the sample knowledge base
-uv run uvicorn app.main:app --reload                         # http://localhost:8000
+uv run uvicorn app.main:create_app --factory --reload        # http://localhost:8000
 # in a second terminal:
 cd frontend && pnpm install && pnpm dev                      # http://localhost:3000
 ```
@@ -52,6 +52,7 @@ Backend settings come from `backend/.env` (see `backend/.env.example`):
 | `DATABASE_URL` | (required) | Postgres connection string (asyncpg) |
 | `GROQ_API_KEY` | (empty) | Groq API key; `/chat` fails without it |
 | `GROQ_MODEL` | `openai/gpt-oss-120b` | Groq model used for answers |
+| `CHAT_RATE_LIMIT_PER_MINUTE` | `20` | `/chat` requests allowed per client IP per minute (in-process) |
 | `LOG_LEVEL` | `INFO` | Log level |
 | `CORS_ORIGINS` | `["http://localhost:3000"]` | JSON list of allowed browser origins |
 
@@ -81,7 +82,7 @@ CI fails if the committed client doesn't match the backend.
 
 ## Development
 
-Backend checks (run in `backend/`; tests need the DB running):
+Backend checks (run in `backend/`; tests need the DB running and use their own `<db>_test` database, created and migrated automatically):
 
 ```sh
 uv run ruff format --check . && uv run ruff check . && uv run mypy .

@@ -49,6 +49,26 @@ export type HttpValidationError = {
 };
 
 /**
+ * HealthStatus
+ */
+export type HealthStatus = {
+    /**
+     * Status
+     */
+    status: 'ok';
+};
+
+/**
+ * ReadyStatus
+ */
+export type ReadyStatus = {
+    /**
+     * Status
+     */
+    status: 'ready';
+};
+
+/**
  * Source
  */
 export type Source = {
@@ -135,13 +155,9 @@ export type HealthData = {
 
 export type HealthResponses = {
     /**
-     * Response Health
-     *
      * Successful Response
      */
-    200: {
-        [key: string]: string;
-    };
+    200: HealthStatus;
 };
 
 export type HealthResponse = HealthResponses[keyof HealthResponses];
@@ -153,15 +169,18 @@ export type ReadyData = {
     url: '/health/ready';
 };
 
+export type ReadyErrors = {
+    /**
+     * Database unavailable
+     */
+    503: unknown;
+};
+
 export type ReadyResponses = {
     /**
-     * Response Ready
-     *
      * Successful Response
      */
-    200: {
-        [key: string]: string;
-    };
+    200: ReadyStatus;
 };
 
 export type ReadyResponse = ReadyResponses[keyof ReadyResponses];
