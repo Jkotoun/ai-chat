@@ -10,6 +10,7 @@ from groq import AsyncGroq
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.api import chat, health
+from app.api.rate_limit import RateLimiter
 from app.config import Settings, get_settings
 from app.db.session import create_engine
 from app.logging_config import configure_logging
@@ -23,6 +24,7 @@ class State(TypedDict):
     session_factory: async_sessionmaker[AsyncSession]
     embedder: Embedder
     llm: LLMClient
+    chat_rate_limiter: RateLimiter
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -45,6 +47,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "session_factory": async_sessionmaker[AsyncSession](engine, expire_on_commit=False),
                 "embedder": embedder,
                 "llm": LLMClient(groq, settings.groq_model),
+                "chat_rate_limiter": RateLimiter(settings.chat_rate_limit_per_minute),
             }
         finally:
             await groq.close()

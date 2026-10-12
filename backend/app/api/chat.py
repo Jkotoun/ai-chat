@@ -2,11 +2,11 @@ from collections.abc import AsyncIterator
 from typing import Annotated, Literal, get_args
 
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.sse import EventSourceResponse
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from app.api.deps import ChatServiceDep
+from app.api.deps import ChatServiceDep, limit_chat_rate
 
 logger = structlog.get_logger()
 
@@ -71,6 +71,7 @@ STREAM_SCHEMA = {
 @router.post(
     "/chat",
     response_class=EventSourceResponse,
+    dependencies=[Depends(limit_chat_rate)],
     responses={200: {"content": {"text/event-stream": {"schema": STREAM_SCHEMA}}}},
 )
 async def chat(body: ChatRequest, chat_service: ChatServiceDep) -> AsyncIterator[ChatEvent]:

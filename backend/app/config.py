@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     groq_api_key: SecretStr = SecretStr("")
     groq_model: str = "openai/gpt-oss-120b"
     groq_read_timeout_seconds: float = 30  # per read; a stream has no total cap
+
+    chat_rate_limit_per_minute: int = Field(default=20, gt=0)  # per client IP
 
     log_level: LogLevel = "INFO"
 

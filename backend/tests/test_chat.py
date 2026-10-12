@@ -5,7 +5,8 @@ import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 
-from app.api.deps import get_chat_service
+from app.api.deps import get_chat_rate_limiter, get_chat_service
+from app.api.rate_limit import RateLimiter
 from app.services.retrieval import RetrievedDocument
 from tests.mocks import MockChatService
 
@@ -65,6 +66,15 @@ async def test_failure_before_sources_sends_only_error(client: AsyncClient) -> N
     response = await client.post("/chat", json={"question": "Hi"})
 
     assert event_types(response.text) == ["error"]
+
+
+async def test_rate_limits_questions_per_client(app: FastAPI, client: AsyncClient) -> None:
+    limiter = RateLimiter(limit=2)
+    app.dependency_overrides[get_chat_rate_limiter] = lambda: limiter
+
+    statuses = [(await client.post("/chat", json={"question": "Hi"})).status_code for _ in range(3)]
+
+    assert statuses == [200, 200, 429]
 
 
 @pytest.mark.parametrize("question", ["", "   ", "x" * 2001])

@@ -52,6 +52,7 @@ Backend settings come from `backend/.env` (see `backend/.env.example`):
 | `DATABASE_URL` | (required) | Postgres connection string (asyncpg) |
 | `GROQ_API_KEY` | (empty) | Groq API key; `/chat` fails without it |
 | `GROQ_MODEL` | `openai/gpt-oss-120b` | Groq model used for answers |
+| `CHAT_RATE_LIMIT_PER_MINUTE` | `20` | `/chat` requests allowed per client IP per minute (in-process) |
 | `LOG_LEVEL` | `INFO` | Log level |
 | `CORS_ORIGINS` | `["http://localhost:3000"]` | JSON list of allowed browser origins |
 

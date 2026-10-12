@@ -3,9 +3,10 @@
 from collections.abc import AsyncIterator
 from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.api.rate_limit import RateLimiter
 from app.services.chat import ChatService
 from app.services.embeddings import Embedder
 from app.services.llm import LLMClient
@@ -47,3 +48,21 @@ def get_chat_service(
 
 
 ChatServiceDep = Annotated[ChatService, Depends(get_chat_service)]
+
+
+def get_chat_rate_limiter(request: Request) -> RateLimiter:
+    limiter: RateLimiter = request.state.chat_rate_limiter
+    return limiter
+
+
+def limit_chat_rate(
+    request: Request, limiter: Annotated[RateLimiter, Depends(get_chat_rate_limiter)]
+) -> None:
+    """Reject the request with 429 when its client is over the limit."""
+    client = request.client.host if request.client else "unknown"
+    if not limiter.hit(client):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many questions, please wait a minute.",
+            headers={"Retry-After": str(int(limiter.window_seconds))},
+        )
