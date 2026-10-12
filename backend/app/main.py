@@ -29,12 +29,12 @@ class State(TypedDict):
 async def lifespan(app: FastAPI) -> AsyncIterator[State]:
     settings = get_settings()
     configure_logging(settings.log_level)
-    if not settings.groq_api_key:
+    if not settings.groq_api_key.get_secret_value():
         logger.warning("groq_api_key_missing")
     embedder = await Embedder.load()
     engine = create_engine(settings.database_url)
     groq = AsyncGroq(
-        api_key=settings.groq_api_key,
+        api_key=settings.groq_api_key.get_secret_value(),
         timeout=httpx.Timeout(settings.groq_read_timeout_seconds, connect=5),
         max_retries=1,
     )

@@ -2,8 +2,10 @@ import logging
 
 import structlog
 
+from app.config import LogLevel
 
-def configure_logging(level: str = "INFO") -> None:
+
+def configure_logging(level: LogLevel = "INFO") -> None:
     """Log application events as JSON."""
     structlog.configure(
         processors=[
@@ -13,7 +15,5 @@ def configure_logging(level: str = "INFO") -> None:
             structlog.processors.format_exc_info,
             structlog.processors.JSONRenderer(),
         ],
-        wrapper_class=structlog.make_filtering_bound_logger(
-            logging.getLevelNamesMapping()[level.upper()]
-        ),
+        wrapper_class=structlog.make_filtering_bound_logger(logging.getLevelNamesMapping()[level]),
     )
