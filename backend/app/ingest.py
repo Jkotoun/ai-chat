@@ -20,7 +20,7 @@ from sqlalchemy import delete, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import get_settings
-from app.db.models import TITLE_MAX_LENGTH, Document
+from app.db.models import TITLE_MAX_LENGTH, Document, DocumentSource
 from app.db.session import create_engine
 from app.logging_config import configure_logging
 from app.services.embeddings import MAX_TOKENS, Embedder
@@ -35,7 +35,7 @@ MAX_CHUNK_CHARS = 1500
 
 @dataclass(frozen=True)
 class Chunk:
-    source: str
+    source: DocumentSource
     title: str
     content: str
     embed_text: str
@@ -52,7 +52,7 @@ def load_faq(path: Path) -> list[Chunk]:
     """One chunk per Q&A pair; the question is embedded."""
     entries = TypeAdapter(list[FaqEntry]).validate_json(path.read_bytes())
     return [
-        Chunk(source="faq", title=e.question, content=e.answer, embed_text=e.question)
+        Chunk(source=DocumentSource.FAQ, title=e.question, content=e.answer, embed_text=e.question)
         for e in entries
     ]
 
@@ -77,9 +77,8 @@ def load_tos(path: Path) -> list[Chunk]:
             title = heading if len(parts) == 1 else f"{heading} ({i}/{len(parts)})"
             if len(title) > TITLE_MAX_LENGTH:
                 raise ValueError(f"{path}: heading longer than {TITLE_MAX_LENGTH} chars: {title}")
-            chunks.append(
-                Chunk(source="tos", title=title, content=part, embed_text=f"{title}\n\n{part}")
-            )
+            embed_text = f"{title}\n\n{part}"
+            chunks.append(Chunk(DocumentSource.TOS, title, content=part, embed_text=embed_text))
     return chunks
 
 
@@ -135,21 +134,24 @@ def split_oversized(paragraph: str, max_chars: int) -> list[str]:
     return pieces
 
 
-def load_directory(data_dir: Path) -> tuple[set[str], list[Chunk]]:
+def load_directory(data_dir: Path) -> tuple[set[DocumentSource], list[Chunk]]:
     """Sources whose files exist (even if empty) and their chunks."""
-    sources: set[str] = set()
+    sources: set[DocumentSource] = set()
     chunks = []
     if (faq := data_dir / FAQ_FILE).exists():
-        sources.add("faq")
+        sources.add(DocumentSource.FAQ)
         chunks += load_faq(faq)
     if (tos := data_dir / TOS_FILE).exists():
-        sources.add("tos")
+        sources.add(DocumentSource.TOS)
         chunks += load_tos(tos)
     return sources, chunks
 
 
 async def ingest(
-    session: AsyncSession, embedder: Embedder, sources: Collection[str], chunks: Sequence[Chunk]
+    session: AsyncSession,
+    embedder: Embedder,
+    sources: Collection[DocumentSource],
+    chunks: Sequence[Chunk],
 ) -> None:
     """Replace all rows of `sources` with `chunks`. The caller commits."""
     texts = [c.embed_text for c in chunks]

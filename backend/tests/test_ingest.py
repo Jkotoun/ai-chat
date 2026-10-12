@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from structlog.testing import capture_logs
 
 from app.config import BACKEND_DIR
-from app.db.models import Document
+from app.db.models import Document, DocumentSource
 from app.ingest import (
     MAX_CHUNK_CHARS,
     Chunk,
@@ -21,12 +21,14 @@ from app.ingest import (
 from app.services.embeddings import MAX_TOKENS, Embedder
 from tests.mocks import MockModel, make_embedder
 
+FAQ, TOS = DocumentSource.FAQ, DocumentSource.TOS
+
 
 def test_load_faq_embeds_question(tmp_path: Path) -> None:
     path = tmp_path / "faq.json"
     path.write_text(json.dumps([{"question": "Q?", "answer": "A."}]))
 
-    assert load_faq(path) == [Chunk(source="faq", title="Q?", content="A.", embed_text="Q?")]
+    assert load_faq(path) == [Chunk(source=FAQ, title="Q?", content="A.", embed_text="Q?")]
 
 
 def test_load_faq_rejects_malformed_entries(tmp_path: Path) -> None:
@@ -42,8 +44,8 @@ def test_load_tos_one_chunk_per_section(tmp_path: Path) -> None:
     path.write_text("# Terms\n\nIntro.\n\n## 1. First\n\nOne.\n\nTwo.\n\n## 2. Second\nThree.\n")
 
     assert load_tos(path) == [
-        Chunk("tos", "1. First", "One.\n\nTwo.", "1. First\n\nOne.\n\nTwo."),
-        Chunk("tos", "2. Second", "Three.", "2. Second\n\nThree."),
+        Chunk(TOS, "1. First", "One.\n\nTwo.", "1. First\n\nOne.\n\nTwo."),
+        Chunk(TOS, "2. Second", "Three.", "2. Second\n\nThree."),
     ]
 
 
@@ -160,11 +162,11 @@ async def titles(session: AsyncSession, source: str) -> list[str]:
 async def test_ingest_replaces_only_given_sources(db_session: AsyncSession) -> None:
     """Integration test: needs Postgres with migrations applied."""
     embedder = make_embedder()
-    faq = [Chunk("faq", f"Q{i}", "A", f"Q{i}") for i in range(3)]
-    tos = [Chunk("tos", "T", "C", "T\n\nC")]
+    faq = [Chunk(FAQ, f"Q{i}", "A", f"Q{i}") for i in range(3)]
+    tos = [Chunk(TOS, "T", "C", "T\n\nC")]
 
-    await ingest(db_session, embedder, {"faq", "tos"}, faq + tos)
-    await ingest(db_session, embedder, {"faq"}, faq[1:2])
+    await ingest(db_session, embedder, {FAQ, TOS}, faq + tos)
+    await ingest(db_session, embedder, {FAQ}, faq[1:2])
 
     assert await titles(db_session, "faq") == ["Q1"]
     assert await titles(db_session, "tos") == ["T"]
@@ -172,18 +174,18 @@ async def test_ingest_replaces_only_given_sources(db_session: AsyncSession) -> N
 
 async def test_ingest_empty_source_clears_its_rows(db_session: AsyncSession) -> None:
     embedder = make_embedder()
-    await ingest(db_session, embedder, {"faq"}, [Chunk("faq", "Q", "A", "Q")])
+    await ingest(db_session, embedder, {FAQ}, [Chunk(FAQ, "Q", "A", "Q")])
 
-    await ingest(db_session, embedder, {"faq"}, [])
+    await ingest(db_session, embedder, {FAQ}, [])
 
     assert await titles(db_session, "faq") == []
 
 
 async def test_ingest_stores_embeddings(db_session: AsyncSession) -> None:
     model = MockModel()
-    chunks = [Chunk("faq", "Q", "A", "embed me")]
+    chunks = [Chunk(FAQ, "Q", "A", "embed me")]
 
-    await ingest(db_session, make_embedder(model), {"faq"}, chunks)
+    await ingest(db_session, make_embedder(model), {FAQ}, chunks)
 
     doc = (await db_session.execute(select(Document).where(Document.title == "Q"))).scalar_one()
     assert model.inputs == [["embed me"]]
@@ -191,9 +193,9 @@ async def test_ingest_stores_embeddings(db_session: AsyncSession) -> None:
 
 
 async def test_ingest_warns_about_truncated_chunks(db_session: AsyncSession) -> None:
-    chunks = [Chunk("faq", "Q", "A", "word " * MAX_TOKENS), Chunk("faq", "Q2", "A", "short")]
+    chunks = [Chunk(FAQ, "Q", "A", "word " * MAX_TOKENS), Chunk(FAQ, "Q2", "A", "short")]
 
     with capture_logs() as logs:
-        await ingest(db_session, make_embedder(), {"faq"}, chunks)
+        await ingest(db_session, make_embedder(), {FAQ}, chunks)
 
     assert [log["title"] for log in logs if log["event"] == "chunk_truncated"] == ["Q"]
