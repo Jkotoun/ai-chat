@@ -9,7 +9,8 @@ from structlog.testing import capture_logs
 
 from app.config import BACKEND_DIR
 from app.db.models import Document, DocumentSource
-from app.ingest import (
+from app.services.embeddings import MAX_TOKENS, Embedder
+from app.services.ingestion import (
     MAX_CHUNK_CHARS,
     Chunk,
     ingest,
@@ -18,7 +19,6 @@ from app.ingest import (
     load_tos,
     split_text,
 )
-from app.services.embeddings import MAX_TOKENS, Embedder
 from tests.mocks import MockModel, make_embedder
 
 FAQ, TOS = DocumentSource.FAQ, DocumentSource.TOS

@@ -2,8 +2,8 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import BACKEND_DIR
-from app.ingest import ingest, load_directory
 from app.services.embeddings import Embedder
+from app.services.ingestion import ingest, load_directory
 from app.services.retrieval import MAX_K, TOP_K, retrieve
 from tests.db import add_documents, use_exact_search
 from tests.mocks import MockModel, make_embedder, unit_vector
