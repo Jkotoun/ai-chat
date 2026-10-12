@@ -4,8 +4,8 @@ import threading
 
 import pytest
 
-from app.db.models import EMBEDDING_DIM, EMBEDDING_QUERY_INSTRUCTION
-from app.services.embeddings import Embedder
+from app.db.models import EMBEDDING_DIM
+from app.services.embeddings import EMBEDDING_QUERY_INSTRUCTION, Embedder
 from tests.mocks import MockModel, make_embedder
 
 

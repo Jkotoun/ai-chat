@@ -6,8 +6,8 @@ import numpy as np
 from fastembed import TextEmbedding
 from groq.types.chat import ChatCompletionMessageParam
 
-from app.db.models import EMBEDDING_DIM, EMBEDDING_QUERY_INSTRUCTION
-from app.services.embeddings import Embedder
+from app.db.models import EMBEDDING_DIM
+from app.services.embeddings import EMBEDDING_QUERY_INSTRUCTION, Embedder
 from app.services.retrieval import RetrievedDocument
 
 

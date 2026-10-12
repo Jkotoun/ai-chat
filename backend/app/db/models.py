@@ -7,11 +7,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
-# Model and vector size are tied to the DB schema; changing either needs a migration.
-EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+# Must match the embedding model's output size; changing it needs a migration.
 EMBEDDING_DIM = 384
-# Recommended by BAAI for bge v1.5 short-query-to-passage retrieval; fastembed doesn't add it.
-EMBEDDING_QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
 TITLE_MAX_LENGTH = 512
 
 
