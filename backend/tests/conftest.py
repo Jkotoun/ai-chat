@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from collections.abc import AsyncIterator, Iterator
 
 import pytest
@@ -19,8 +20,11 @@ from app.main import create_app
 @pytest.fixture(autouse=True)
 def reset_logging() -> Iterator[None]:
     """configure_logging() is global; don't leak it (e.g. its level) into other tests."""
+    root = logging.getLogger()
+    handlers, level = root.handlers[:], root.level
     yield
     structlog.reset_defaults()
+    root.handlers, root.level = handlers, level
 
 
 @pytest.fixture(scope="session")
