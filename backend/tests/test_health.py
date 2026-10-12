@@ -1,8 +1,11 @@
+import asyncio
 from collections.abc import AsyncIterator
 
+import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
+from app.api import health
 from app.api.deps import get_session
 from app.config import Settings
 from app.main import create_app
@@ -37,6 +40,24 @@ async def test_ready_returns_503_when_database_down(app: FastAPI, client: AsyncC
 
     assert response.status_code == 503
     assert response.json() == {"detail": "database unavailable"}
+
+
+async def test_ready_returns_503_when_database_hangs(
+    app: FastAPI, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class HangingSession:
+        async def execute(self, *args: object, **kwargs: object) -> None:
+            await asyncio.sleep(10)
+
+    async def hanging_session() -> AsyncIterator[HangingSession]:
+        yield HangingSession()
+
+    monkeypatch.setattr(health, "READY_TIMEOUT_SECONDS", 0.01)
+    app.dependency_overrides[get_session] = hanging_session
+
+    response = await client.get("/health/ready")
+
+    assert response.status_code == 503
 
 
 async def test_cors_allows_configured_origin() -> None:
