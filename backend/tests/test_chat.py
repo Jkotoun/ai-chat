@@ -9,7 +9,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.chat import get_embedder, get_llm, get_session_factory
+from app.api.deps import get_embedder, get_llm, get_session_factory
 from app.main import app
 from app.services.chat import build_messages
 from app.services.llm import LLMClient

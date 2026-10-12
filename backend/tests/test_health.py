@@ -2,7 +2,7 @@ from collections.abc import AsyncIterator
 
 from httpx import AsyncClient
 
-from app.db.session import get_session
+from app.api.deps import get_session
 from app.main import app
 
 

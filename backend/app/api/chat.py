@@ -2,11 +2,12 @@ from collections.abc import AsyncIterator
 from typing import Annotated, Literal, get_args
 
 import structlog
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter
 from fastapi.sse import EventSourceResponse
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.api.deps import EmbedderDep, LLMDep, SessionFactoryDep
 from app.services.chat import build_messages
 from app.services.embeddings import Embedder
 from app.services.llm import LLMClient
@@ -65,21 +66,6 @@ def chat_event_models() -> tuple[type[ChatEventBase], ...]:
     return get_args(union)
 
 
-def get_embedder(request: Request) -> Embedder:
-    embedder: Embedder = request.state.embedder
-    return embedder
-
-
-def get_llm(request: Request) -> LLMClient:
-    llm: LLMClient = request.state.llm
-    return llm
-
-
-def get_session_factory(request: Request) -> async_sessionmaker[AsyncSession]:
-    session_factory: async_sessionmaker[AsyncSession] = request.state.session_factory
-    return session_factory
-
-
 async def stream_answer(
     question: str,
     embedder: Embedder,
@@ -109,9 +95,9 @@ STREAM_SCHEMA = {
 )
 async def chat(
     body: ChatRequest,
-    embedder: Annotated[Embedder, Depends(get_embedder)],
-    llm: Annotated[LLMClient, Depends(get_llm)],
-    session_factory: Annotated[async_sessionmaker[AsyncSession], Depends(get_session_factory)],
+    embedder: EmbedderDep,
+    llm: LLMDep,
+    session_factory: SessionFactoryDep,
 ) -> AsyncIterator[ChatEvent]:
     """Answer from the knowledge base, streamed as SSE.
 

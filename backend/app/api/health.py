@@ -1,12 +1,9 @@
-from typing import Annotated
-
 import structlog
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_session
+from app.api.deps import SessionDep
 
 logger = structlog.get_logger()
 
@@ -20,7 +17,7 @@ async def health() -> dict[str, str]:
 
 
 @router.get("/health/ready")
-async def ready(session: Annotated[AsyncSession, Depends(get_session)]) -> dict[str, str]:
+async def ready(session: SessionDep) -> dict[str, str]:
     """Readiness probe: the database is reachable."""
     try:
         await session.execute(text("SELECT 1"))
