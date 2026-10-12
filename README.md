@@ -81,7 +81,7 @@ CI fails if the committed client doesn't match the backend.
 
 ## Development
 
-Backend checks (run in `backend/`; tests need the DB running):
+Backend checks (run in `backend/`; tests need the DB running and use their own `<db>_test` database, created and migrated automatically):
 
 ```sh
 uv run ruff format --check . && uv run ruff check . && uv run mypy .

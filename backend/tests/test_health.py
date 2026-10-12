@@ -15,7 +15,7 @@ async def test_health(client: AsyncClient) -> None:
     assert response.json() == {"status": "ok"}
 
 
-async def test_ready_checks_database(client: AsyncClient) -> None:
+async def test_ready_checks_database(client: AsyncClient, test_database: None) -> None:
     """Integration test: needs Postgres running (`docker compose up -d db`)."""
     response = await client.get("/health/ready")
 

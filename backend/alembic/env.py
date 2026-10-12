@@ -11,11 +11,15 @@ from app.db import models  # noqa: F401  (registers tables on Base.metadata)
 from app.db.base import Base
 
 config = context.config
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name, disable_existing_loggers=False)
+# Tests pass their own database URL and keep their logging setup.
+database_url: str | None = config.attributes.get("database_url")
+if database_url is None:
+    if config.config_file_name is not None:
+        fileConfig(config.config_file_name, disable_existing_loggers=False)
+    database_url = get_settings().database_url
 
 # "%" is legal in URL-encoded passwords but special in the ini parser.
-config.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))
+config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 target_metadata = Base.metadata
 
 
