@@ -43,3 +43,11 @@ def test_build_messages_without_documents() -> None:
     system, _ = build_messages("Hi", [])
 
     assert "(none)" in str(system["content"])
+
+
+def test_build_messages_quotes_titles() -> None:
+    doc = RetrievedDocument(id=1, source="faq", title='Say "hi"', content="Hi.", score=0.9)
+
+    system, _ = build_messages("Hi", [doc])
+
+    assert """title='Say "hi"'""" in str(system["content"])

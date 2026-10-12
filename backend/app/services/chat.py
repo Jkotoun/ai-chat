@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator, Sequence
+from xml.sax.saxutils import quoteattr
 
 from groq.types.chat import ChatCompletionMessageParam
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -19,7 +20,8 @@ def build_messages(
     question: str, documents: Sequence[RetrievedDocument]
 ) -> list[ChatCompletionMessageParam]:
     context = "\n\n".join(
-        f'<document source="{d.source}" title="{d.title}">\n{d.content}\n</document>'
+        f"<document source={quoteattr(d.source)} title={quoteattr(d.title)}>\n"
+        f"{d.content}\n</document>"
         for d in documents
     )
     return [
