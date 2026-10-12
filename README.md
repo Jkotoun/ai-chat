@@ -36,7 +36,7 @@ cd backend
 uv sync
 uv run alembic upgrade head                                  # create the schema
 uv run python -m app.ingest data/                            # load the sample knowledge base
-uv run uvicorn app.main:app --reload                         # http://localhost:8000
+uv run uvicorn app.main:create_app --factory --reload        # http://localhost:8000
 # in a second terminal:
 cd frontend && pnpm install && pnpm dev                      # http://localhost:3000
 ```

@@ -2,13 +2,14 @@ from collections.abc import AsyncIterator, Iterator
 
 import pytest
 import structlog
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from starlette.types import Receive, Scope, Send
 
 from app.config import get_settings
 from app.db.session import create_engine
-from app.main import app
+from app.main import create_app
 
 
 @pytest.fixture(autouse=True)
@@ -19,7 +20,12 @@ def reset_logging() -> Iterator[None]:
 
 
 @pytest.fixture
-async def client() -> AsyncIterator[AsyncClient]:
+def app() -> FastAPI:
+    return create_app()
+
+
+@pytest.fixture
+async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     # ASGITransport skips lifespan and its state, so do both by hand.
     async with app.router.lifespan_context(app) as state:
 

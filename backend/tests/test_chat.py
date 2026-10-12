@@ -1,12 +1,11 @@
 import json
-from collections.abc import Iterator
 from typing import Any
 
 import pytest
+from fastapi import FastAPI
 from httpx import AsyncClient
 
 from app.api.deps import get_chat_service
-from app.main import app
 from app.services.retrieval import RetrievedDocument
 from tests.mocks import MockChatService
 
@@ -28,10 +27,8 @@ def chat_service() -> MockChatService:
 
 
 @pytest.fixture(autouse=True)
-def override_chat_service(chat_service: MockChatService) -> Iterator[None]:
+def override_chat_service(app: FastAPI, chat_service: MockChatService) -> None:
     app.dependency_overrides[get_chat_service] = lambda: chat_service
-    yield
-    app.dependency_overrides.clear()
 
 
 async def test_streams_sources_then_tokens(
@@ -77,7 +74,7 @@ async def test_rejects_invalid_question(client: AsyncClient, question: str) -> N
     assert response.status_code == 422
 
 
-def test_openapi_lists_stream_event_types() -> None:
+def test_openapi_lists_stream_event_types(app: FastAPI) -> None:
     """Client generators read the 3.1 `schema`, not FastAPI's 3.2 `itemSchema`."""
     content = app.openapi()["paths"]["/chat"]["post"]["responses"]["200"]["content"]
 
