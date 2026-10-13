@@ -1,4 +1,6 @@
 from collections.abc import AsyncIterator, Sequence
+from dataclasses import dataclass
+from typing import Literal
 from xml.sax.saxutils import quoteattr
 
 from groq.types.chat import ChatCompletionMessageParam
@@ -16,8 +18,24 @@ contacting human support. Do not make up information.
 Keep answers short and friendly."""
 
 
+@dataclass(frozen=True)
+class ChatTurn:
+    """An earlier message of the conversation."""
+
+    role: Literal["user", "assistant"]
+    content: str
+
+
+def turn_message(turn: ChatTurn) -> ChatCompletionMessageParam:
+    match turn.role:
+        case "user":
+            return {"role": "user", "content": turn.content}
+        case "assistant":
+            return {"role": "assistant", "content": turn.content}
+
+
 def build_messages(
-    question: str, documents: Sequence[RetrievedDocument]
+    question: str, documents: Sequence[RetrievedDocument], history: Sequence[ChatTurn] = ()
 ) -> list[ChatCompletionMessageParam]:
     context = "\n\n".join(
         f"<document source={quoteattr(d.source)} title={quoteattr(d.title)}>\n"
@@ -26,6 +44,7 @@ def build_messages(
     )
     return [
         {"role": "system", "content": f"{SYSTEM_PROMPT}\n\nContext:\n{context or '(none)'}"},
+        *map(turn_message, history),
         {"role": "user", "content": question},
     ]
 
@@ -49,7 +68,10 @@ class ChatService:
             return await retrieve(session, self._embedder, question)
 
     def stream_answer(
-        self, question: str, documents: Sequence[RetrievedDocument]
+        self,
+        question: str,
+        documents: Sequence[RetrievedDocument],
+        history: Sequence[ChatTurn] = (),
     ) -> AsyncIterator[str]:
-        """The answer's text deltas, grounded in `documents`."""
-        return self._llm.stream(build_messages(question, documents))
+        """The answer's text deltas, grounded in `documents` and following on from `history`."""
+        return self._llm.stream(build_messages(question, documents, history))
