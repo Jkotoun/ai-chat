@@ -9,6 +9,8 @@ export type Answer = {
   sources: Source[];
   status: "streaming" | "done" | "error";
   error?: string;
+  /** Set when the question was handed over to human support. */
+  ticketReference?: string;
 };
 
 export type Message = Question | Answer;
@@ -29,6 +31,8 @@ export function applyEvent(answer: Answer, event: ChatEvent): Answer {
       return { ...answer, sources: event.sources };
     case "token":
       return { ...answer, text: answer.text + event.text };
+    case "ticket":
+      return { ...answer, ticketReference: event.reference };
     case "done":
       return { ...answer, status: "done" };
     case "error":

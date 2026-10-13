@@ -5,11 +5,18 @@ import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 
-from app.api.chat import MAX_HISTORY_CONTENT_LENGTH, MAX_HISTORY_MESSAGES
+from app.api.chat import (
+    MAX_HISTORY_CONTENT_LENGTH,
+    MAX_HISTORY_MESSAGES,
+    TicketEvent,
+    to_sse_event,
+)
 from app.api.deps import get_chat_rate_limiter, get_chat_service
 from app.api.rate_limit import RateLimiter
-from app.services.chat import ChatTurn
+from app.services.conversation import ChatTurn
 from app.services.retrieval import RetrievedDocument
+from app.services.tools.base import ToolEvent
+from app.services.tools.create_ticket import TicketCreated
 from tests.mocks import MockChatService
 
 DOC = RetrievedDocument(id=1, source="faq", title="Reset password", content="...", score=0.9)
@@ -61,6 +68,17 @@ async def test_passes_history_to_chat_service(
 
     assert response.status_code == 200
     assert chat_service.histories == [[ChatTurn("user", "Hi"), ChatTurn("assistant", "Hello!")]]
+
+
+@pytest.mark.parametrize(
+    "chat_service", [MockChatService([DOC], ["Sure. ", TicketCreated("SUP-ABC"), "Done."])]
+)
+async def test_streams_ticket_event(client: AsyncClient) -> None:
+    response = await client.post("/chat", json={"question": "Get me a human"})
+
+    events = parse_sse(response.text)
+    assert [event["type"] for event in events] == ["sources", "token", "ticket", "token", "done"]
+    assert events[2] == {"type": "ticket", "reference": "SUP-ABC"}
 
 
 @pytest.mark.parametrize(
@@ -119,5 +137,13 @@ def test_openapi_lists_stream_event_types(app: FastAPI) -> None:
 
     refs = [schema["$ref"] for schema in content["text/event-stream"]["schema"]["oneOf"]]
 
-    events = ["SourcesEvent", "TokenEvent", "DoneEvent", "ErrorEvent"]
+    events = ["SourcesEvent", "TokenEvent", "TicketEvent", "DoneEvent", "ErrorEvent"]
     assert refs == [f"#/components/schemas/{name}" for name in events]
+
+
+def test_unmapped_answer_event_is_not_sent() -> None:
+    class Unmapped(ToolEvent):
+        pass
+
+    assert to_sse_event(Unmapped()) is None
+    assert to_sse_event(TicketCreated("SUP-ABC")) == TicketEvent(reference="SUP-ABC")

@@ -2,7 +2,11 @@ from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
 
 from groq import AsyncGroq, omit
-from groq.types.chat import ChatCompletionMessageParam, ChatCompletionToolParam
+from groq.types.chat import (
+    ChatCompletionMessageParam,
+    ChatCompletionToolChoiceOptionParam,
+    ChatCompletionToolParam,
+)
 from groq.types.chat.chat_completion_chunk import ChoiceDelta, ChoiceDeltaToolCall
 
 
@@ -51,10 +55,11 @@ class LLMClient:
         self,
         messages: Sequence[ChatCompletionMessageParam],
         tools: Sequence[ChatCompletionToolParam] = (),
+        tool_choice: ChatCompletionToolChoiceOptionParam | None = None,
     ) -> AsyncIterator[LLMEvent]:
         """Yield text deltas as they arrive, then the tool calls the model made, if any."""
         tool_calls: dict[int, _ToolCallBuilder] = {}
-        async for delta in self._deltas(messages, tools):
+        async for delta in self._deltas(messages, tools, tool_choice):
             if delta.content:
                 yield TextDelta(delta.content)
             for fragment in delta.tool_calls or []:
@@ -66,6 +71,7 @@ class LLMClient:
         self,
         messages: Sequence[ChatCompletionMessageParam],
         tools: Sequence[ChatCompletionToolParam],
+        tool_choice: ChatCompletionToolChoiceOptionParam | None,
     ) -> AsyncIterator[ChoiceDelta]:
         """The raw message deltas Groq streams back."""
         if not self._client.api_key:
@@ -75,6 +81,7 @@ class LLMClient:
             model=self._model,
             messages=list(messages),
             tools=list(tools) or omit,
+            tool_choice=tool_choice or omit,
             stream=True,
             temperature=0.2,
         )

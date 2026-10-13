@@ -38,7 +38,8 @@ export const ready = <ThrowOnError extends boolean = false>(options?: Options<Re
  * Answer from the knowledge base, streamed as SSE.
  *
  * Sends `sources`, then a `token` per text delta, then `done`; `error` replaces
- * the rest if something fails mid-stream.
+ * the rest if something fails mid-stream. A `ticket` event comes before the
+ * tokens that confirm it when the user was handed over to human support.
  */
 export const chat = <ThrowOnError extends boolean = false>(options: Options<ChatData, ThrowOnError, ChatResponse>): Promise<ServerSentEventsResult<ChatResponses>> => (options.client ?? client).sse.post<ChatResponses, ChatErrors, ThrowOnError>({
     url: '/chat',

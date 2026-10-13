@@ -10,6 +10,7 @@ from app.api.rate_limit import RateLimiter
 from app.services.chat import ChatService
 from app.services.embeddings import Embedder
 from app.services.llm import LLMClient
+from app.services.tools.create_ticket import CreateTicketTool
 
 
 def get_session_factory(request: Request) -> async_sessionmaker[AsyncSession]:
@@ -44,7 +45,7 @@ SessionDep = Annotated[AsyncSession, Depends(get_session)]
 def get_chat_service(
     session_factory: SessionFactoryDep, embedder: EmbedderDep, llm: LLMDep
 ) -> ChatService:
-    return ChatService(session_factory, embedder, llm)
+    return ChatService(session_factory, embedder, llm, [CreateTicketTool(session_factory)])
 
 
 ChatServiceDep = Annotated[ChatService, Depends(get_chat_service)]

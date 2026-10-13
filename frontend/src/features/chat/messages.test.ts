@@ -22,6 +22,12 @@ describe("applyEvent", () => {
     expect(answer).toMatchObject({ text: "Hello", sources: [source], status: "streaming" });
   });
 
+  it("records the support ticket", () => {
+    const answer = applyEvent(newAnswer(), { type: "ticket", reference: "SUP-ABC" });
+
+    expect(answer.ticketReference).toBe("SUP-ABC");
+  });
+
   it("finishes on done", () => {
     expect(applyEvent(newAnswer(), { type: "done" }).status).toBe("done");
   });
