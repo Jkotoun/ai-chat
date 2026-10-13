@@ -3,7 +3,7 @@ from typing import cast
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.services.chat import ChatService, ChatTurn, build_messages
-from app.services.llm import LLMClient
+from app.services.llm import LLMClient, ToolCall
 from app.services.retrieval import RetrievedDocument
 from tests.db import add_documents
 from tests.mocks import MockLLM, MockModel, make_embedder, unit_vector
@@ -27,6 +27,17 @@ async def test_answers_from_retrieved_documents(
     assert deltas == ["Click ", "Forgot password."]
     assert "Reset password content" in str(llm.messages[0]["content"])
     assert llm.messages[-1] == {"role": "user", "content": "How do I reset?"}
+
+
+async def test_stream_answer_yields_only_text(
+    db_session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    llm = MockLLM(["Hi", ToolCall("call_1", "create_ticket", "{}")])
+    service = ChatService(db_session_factory, make_embedder(), cast(LLMClient, llm))
+
+    deltas = [d async for d in service.stream_answer("Hi", [])]
+
+    assert deltas == ["Hi"]
 
 
 def test_build_messages_puts_documents_in_system_prompt() -> None:

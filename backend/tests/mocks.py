@@ -4,11 +4,12 @@ from typing import Any, Literal, cast
 
 import numpy as np
 from fastembed import TextEmbedding
-from groq.types.chat import ChatCompletionMessageParam
+from groq.types.chat import ChatCompletionMessageParam, ChatCompletionToolParam
 
 from app.db.models import EMBEDDING_DIM
 from app.services.chat import ChatTurn
 from app.services.embeddings import EMBEDDING_QUERY_INSTRUCTION, Embedder
+from app.services.llm import LLMEvent, TextDelta, ToolCall
 from app.services.retrieval import RetrievedDocument
 
 
@@ -47,17 +48,22 @@ def unit_vector(*weights: float) -> list[float]:
 
 
 class MockLLM:
-    """Stand-in for LLMClient; streams fixed deltas, optionally failing midway."""
+    """Stand-in for LLMClient; streams fixed text deltas and tool calls, optionally failing."""
 
-    def __init__(self, deltas: list[str], error: Exception | None = None) -> None:
-        self.deltas = deltas
+    def __init__(self, events: list[str | ToolCall], error: Exception | None = None) -> None:
+        self.events = events
         self.error = error
         self.messages: list[ChatCompletionMessageParam] = []
+        self.tools: list[ChatCompletionToolParam] = []
 
-    async def stream(self, messages: Sequence[ChatCompletionMessageParam]) -> AsyncIterator[str]:
-        self.messages = list(messages)
-        for delta in self.deltas:
-            yield delta
+    async def stream(
+        self,
+        messages: Sequence[ChatCompletionMessageParam],
+        tools: Sequence[ChatCompletionToolParam] = (),
+    ) -> AsyncIterator[LLMEvent]:
+        self.messages, self.tools = list(messages), list(tools)
+        for event in self.events:
+            yield TextDelta(event) if isinstance(event, str) else event
         if self.error:
             raise self.error
 
@@ -73,7 +79,8 @@ class MockChatService:
         fail_at: Literal["sources", "answer"] = "answer",
     ) -> None:
         self.documents = documents or []
-        self.llm = MockLLM(deltas or [], error if fail_at == "answer" else None)
+        self.deltas = deltas or []
+        self.answer_error = error if fail_at == "answer" else None
         self.sources_error = error if fail_at == "sources" else None
         self.questions: list[str] = []
         self.histories: list[list[ChatTurn]] = []
@@ -91,4 +98,10 @@ class MockChatService:
         history: Sequence[ChatTurn] = (),
     ) -> AsyncIterator[str]:
         self.histories.append(list(history))
-        return self.llm.stream([])
+        return self._stream()
+
+    async def _stream(self) -> AsyncIterator[str]:
+        for delta in self.deltas:
+            yield delta
+        if self.answer_error:
+            raise self.answer_error

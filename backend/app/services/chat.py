@@ -7,7 +7,7 @@ from groq.types.chat import ChatCompletionMessageParam
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.services.embeddings import Embedder
-from app.services.llm import LLMClient
+from app.services.llm import LLMClient, TextDelta
 from app.services.retrieval import RetrievedDocument, retrieve
 
 SYSTEM_PROMPT = """\
@@ -67,11 +67,13 @@ class ChatService:
         async with self._session_factory() as session:
             return await retrieve(session, self._embedder, question)
 
-    def stream_answer(
+    async def stream_answer(
         self,
         question: str,
         documents: Sequence[RetrievedDocument],
         history: Sequence[ChatTurn] = (),
     ) -> AsyncIterator[str]:
         """The answer's text deltas, grounded in `documents` and following on from `history`."""
-        return self._llm.stream(build_messages(question, documents, history))
+        async for event in self._llm.stream(build_messages(question, documents, history)):
+            if isinstance(event, TextDelta):
+                yield event.text
