@@ -1,20 +1,22 @@
 # ai-chat
 
-An AI customer support chat that answers questions from your own knowledge base. Load an FAQ and Terms of Service, ask a question in the browser, and get a short answer streamed back, along with the documents it was based on. If the knowledge base doesn't cover the question, the assistant says so instead of making something up.
+An AI customer support chat that answers questions from your own knowledge base. Load an FAQ and Terms of Service, ask a question in the browser, and get a short answer streamed back, along with the documents it was based on. If the knowledge base doesn't cover the question, the assistant says so instead of making something up, and offers to hand the conversation over to a human by creating a support ticket.
 
-![Demo: asking which plans are offered and getting a streamed answer with sources](docs/demo.gif)
+![Demo: asking which plans are offered, then clicking Talk to a human, giving an email and getting a support ticket](docs/demo.gif)
 
 ## How it works
 
 ```
 question ─► embed (bge-small) ─► top-5 cosine search (pgvector) ─► LLM prompt with context (Groq) ─► streamed answer + sources
+                                                                         │
+                                                                         └─► create_ticket tool ─► support_tickets row + ticket reference
 ```
 
 1. **Ingestion**: `app.ingest` reads `faq.json` (one document per Q&A) and `tos.md` (one document per section, long sections split into chunks), embeds them with [fastembed](https://github.com/qdrant/fastembed) (`BAAI/bge-small-en-v1.5`, 384 dims) and stores them in Postgres with pgvector. Re-running it replaces each source, so it is idempotent.
 2. **Retrieval**: the question is embedded the same way and the 5 closest documents are found by cosine similarity (HNSW index).
 3. **Answering**: the documents go into the system prompt, and a Groq-hosted LLM (default `openai/gpt-oss-120b`) answers using only that context. The browser sends the last 20 messages along with each question, so follow-ups work; the server keeps no conversation state.
-4. **Streaming**: `POST /chat` returns Server-Sent Events, each a JSON object with a `type`: `sources` first, then a `token` per text chunk, then `done`. If something fails mid-stream, an `error` event replaces the rest. The event types are part of the OpenAPI spec.
-5. **Escalation**: when the user asks for a human, the LLM asks for their email and calls a `create_ticket` tool. The backend checks that the email is one the user actually wrote, stores a support ticket, sends a `ticket` event with its reference, and the LLM confirms it.
+4. **Streaming**: `POST /chat` returns Server-Sent Events, each a JSON object with a `type`: `sources` first, then a `token` per text chunk, then `done`. A `ticket` event comes before the tokens when a support ticket was created. If something fails mid-stream, an `error` event replaces the rest. The event types are part of the OpenAPI spec.
+5. **Escalation**: when the user asks for a human (by typing it or clicking **Talk to a human** in the header), the LLM asks for their email and calls a `create_ticket` tool. The backend checks that the email is one the user actually wrote, stores a support ticket, sends a `ticket` event with its reference, and the LLM confirms it.
 6. **UI**: a Next.js chat page built with MUI shows the answer as it streams in (rendered as Markdown), with the sources as chips under it and a card with the ticket reference when one was created. It calls the backend through a TypeScript client generated from the OpenAPI spec.
 
 The sample data in `backend/data/` describes a made-up cloud storage service. Swap in your own `faq.json` / `tos.md` and re-run the ingestion.
