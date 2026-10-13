@@ -7,6 +7,7 @@ from fastembed import TextEmbedding
 from groq.types.chat import ChatCompletionMessageParam
 
 from app.db.models import EMBEDDING_DIM
+from app.services.chat import ChatTurn
 from app.services.embeddings import EMBEDDING_QUERY_INSTRUCTION, Embedder
 from app.services.retrieval import RetrievedDocument
 
@@ -75,6 +76,7 @@ class MockChatService:
         self.llm = MockLLM(deltas or [], error if fail_at == "answer" else None)
         self.sources_error = error if fail_at == "sources" else None
         self.questions: list[str] = []
+        self.histories: list[list[ChatTurn]] = []
 
     async def find_sources(self, question: str) -> list[RetrievedDocument]:
         self.questions.append(question)
@@ -83,6 +85,10 @@ class MockChatService:
         return self.documents
 
     def stream_answer(
-        self, question: str, documents: Sequence[RetrievedDocument]
+        self,
+        question: str,
+        documents: Sequence[RetrievedDocument],
+        history: Sequence[ChatTurn] = (),
     ) -> AsyncIterator[str]:
+        self.histories.append(list(history))
         return self.llm.stream([])

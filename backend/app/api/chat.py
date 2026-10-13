@@ -7,16 +7,27 @@ from fastapi.sse import EventSourceResponse
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.api.deps import ChatServiceDep, limit_chat_rate
+from app.services.chat import ChatTurn
 
 logger = structlog.get_logger()
 
 router = APIRouter(tags=["chat"])
+
+MAX_HISTORY_MESSAGES = 20
+MAX_HISTORY_CONTENT_LENGTH = 4000
+
+
+class HistoryMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: Annotated[str, StringConstraints(min_length=1, max_length=MAX_HISTORY_CONTENT_LENGTH)]
 
 
 class ChatRequest(BaseModel):
     question: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)
     ]
+    # Earlier messages, oldest first; the server keeps no conversation state.
+    history: Annotated[list[HistoryMessage], Field(max_length=MAX_HISTORY_MESSAGES)] = []
 
 
 class Source(BaseModel):
@@ -85,7 +96,8 @@ async def chat(body: ChatRequest, chat_service: ChatServiceDep) -> AsyncIterator
         yield SourcesEvent(
             sources=[Source.model_validate(d, from_attributes=True) for d in documents]
         )
-        async for delta in chat_service.stream_answer(body.question, documents):
+        history = [ChatTurn(role=m.role, content=m.content) for m in body.history]
+        async for delta in chat_service.stream_answer(body.question, documents, history):
             yield TokenEvent(text=delta)
     except Exception:
         # Headers are already sent, so report the failure in-band.

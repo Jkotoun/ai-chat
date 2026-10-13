@@ -12,6 +12,10 @@ export type ChatRequest = {
      * Question
      */
     question: string;
+    /**
+     * History
+     */
+    history?: Array<HistoryMessage>;
 };
 
 /**
@@ -56,6 +60,20 @@ export type HealthStatus = {
      * Status
      */
     status: 'ok';
+};
+
+/**
+ * HistoryMessage
+ */
+export type HistoryMessage = {
+    /**
+     * Role
+     */
+    role: 'user' | 'assistant';
+    /**
+     * Content
+     */
+    content: string;
 };
 
 /**

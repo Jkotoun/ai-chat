@@ -2,7 +2,7 @@ from typing import cast
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.services.chat import ChatService, build_messages
+from app.services.chat import ChatService, ChatTurn, build_messages
 from app.services.llm import LLMClient
 from app.services.retrieval import RetrievedDocument
 from tests.db import add_documents
@@ -37,6 +37,18 @@ def test_build_messages_puts_documents_in_system_prompt() -> None:
     assert 'title="6. Refunds"' in str(system["content"])
     assert "14 days." in str(system["content"])
     assert user == {"role": "user", "content": "Refund?"}
+
+
+def test_build_messages_puts_history_before_question() -> None:
+    history = [ChatTurn("user", "Hi"), ChatTurn("assistant", "Hello!")]
+
+    _, *rest = build_messages("Refunds?", [], history)
+
+    assert rest == [
+        {"role": "user", "content": "Hi"},
+        {"role": "assistant", "content": "Hello!"},
+        {"role": "user", "content": "Refunds?"},
+    ]
 
 
 def test_build_messages_without_documents() -> None:
