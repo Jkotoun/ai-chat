@@ -1,13 +1,19 @@
 import threading
 from collections.abc import AsyncIterator, Iterable, Sequence
+from dataclasses import dataclass
 from typing import Any, Literal, cast
 
 import numpy as np
 from fastembed import TextEmbedding
-from groq.types.chat import ChatCompletionMessageParam, ChatCompletionToolParam
+from groq.types.chat import (
+    ChatCompletionMessageParam,
+    ChatCompletionToolChoiceOptionParam,
+    ChatCompletionToolParam,
+)
 
 from app.db.models import EMBEDDING_DIM
-from app.services.chat import ChatTurn
+from app.services.chat import AnswerEvent
+from app.services.conversation import ChatTurn
 from app.services.embeddings import EMBEDDING_QUERY_INSTRUCTION, Embedder
 from app.services.llm import LLMEvent, TextDelta, ToolCall
 from app.services.retrieval import RetrievedDocument
@@ -47,22 +53,34 @@ def unit_vector(*weights: float) -> list[float]:
     return [w / norm for w in weights] + [0.0] * (EMBEDDING_DIM - len(weights))
 
 
-class MockLLM:
-    """Stand-in for LLMClient; streams fixed text deltas and tool calls, optionally failing."""
+@dataclass
+class LLMCall:
+    messages: list[ChatCompletionMessageParam]
+    tools: list[ChatCompletionToolParam]
+    tool_choice: ChatCompletionToolChoiceOptionParam | None
 
-    def __init__(self, events: list[str | ToolCall], error: Exception | None = None) -> None:
-        self.events = events
+
+class MockLLM:
+    """Stand-in for LLMClient; each call streams the next scripted round, optionally failing."""
+
+    def __init__(self, *rounds: list[str | ToolCall], error: Exception | None = None) -> None:
+        self.rounds = list(rounds)
         self.error = error
-        self.messages: list[ChatCompletionMessageParam] = []
-        self.tools: list[ChatCompletionToolParam] = []
+        self.calls: list[LLMCall] = []
+
+    @property
+    def messages(self) -> list[ChatCompletionMessageParam]:
+        """The messages of the first call."""
+        return self.calls[0].messages
 
     async def stream(
         self,
         messages: Sequence[ChatCompletionMessageParam],
         tools: Sequence[ChatCompletionToolParam] = (),
+        tool_choice: ChatCompletionToolChoiceOptionParam | None = None,
     ) -> AsyncIterator[LLMEvent]:
-        self.messages, self.tools = list(messages), list(tools)
-        for event in self.events:
+        self.calls.append(LLMCall(list(messages), list(tools), tool_choice))
+        for event in self.rounds.pop(0):
             yield TextDelta(event) if isinstance(event, str) else event
         if self.error:
             raise self.error
@@ -74,7 +92,7 @@ class MockChatService:
     def __init__(
         self,
         documents: list[RetrievedDocument] | None = None,
-        deltas: list[str] | None = None,
+        deltas: list[str | AnswerEvent] | None = None,
         error: Exception | None = None,
         fail_at: Literal["sources", "answer"] = "answer",
     ) -> None:
@@ -96,12 +114,12 @@ class MockChatService:
         question: str,
         documents: Sequence[RetrievedDocument],
         history: Sequence[ChatTurn] = (),
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[AnswerEvent]:
         self.histories.append(list(history))
         return self._stream()
 
-    async def _stream(self) -> AsyncIterator[str]:
+    async def _stream(self) -> AsyncIterator[AnswerEvent]:
         for delta in self.deltas:
-            yield delta
+            yield TextDelta(delta) if isinstance(delta, str) else delta
         if self.answer_error:
             raise self.answer_error

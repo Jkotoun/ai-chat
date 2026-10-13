@@ -1,5 +1,5 @@
-from collections.abc import AsyncIterator
-from typing import Annotated, Literal, get_args
+from collections.abc import AsyncIterator, Callable
+from typing import Annotated, Any, Literal, get_args
 
 import structlog
 from fastapi import APIRouter, Depends
@@ -7,7 +7,10 @@ from fastapi.sse import EventSourceResponse
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.api.deps import ChatServiceDep, limit_chat_rate
-from app.services.chat import ChatTurn
+from app.services.chat import AnswerEvent
+from app.services.conversation import ChatTurn
+from app.services.llm import TextDelta
+from app.services.tools.create_ticket import TicketCreated
 
 logger = structlog.get_logger()
 
@@ -52,6 +55,11 @@ class TokenEvent(ChatEventBase):
     text: str
 
 
+class TicketEvent(ChatEventBase):
+    type: Literal["ticket"] = "ticket"
+    reference: str
+
+
 class DoneEvent(ChatEventBase):
     type: Literal["done"] = "done"
 
@@ -62,8 +70,24 @@ class ErrorEvent(ChatEventBase):
 
 
 ChatEvent = Annotated[
-    SourcesEvent | TokenEvent | DoneEvent | ErrorEvent, Field(discriminator="type")
+    SourcesEvent | TokenEvent | TicketEvent | DoneEvent | ErrorEvent, Field(discriminator="type")
 ]
+
+
+# How each event of the chat service is sent to the client, by exact type.
+SSE_EVENTS: dict[type[AnswerEvent], Callable[[Any], TokenEvent | TicketEvent]] = {
+    TextDelta: lambda delta: TokenEvent(text=delta.text),
+    TicketCreated: lambda ticket: TicketEvent(reference=ticket.reference),
+}
+
+
+def to_sse_event(event: AnswerEvent) -> TokenEvent | TicketEvent | None:
+    """The client event for `event`, or None if it has no mapping in `SSE_EVENTS`."""
+    convert = SSE_EVENTS.get(type(event))
+    if convert is None:
+        logger.warning("answer_event_not_sent", event_type=type(event).__name__)
+        return None
+    return convert(event)
 
 
 def chat_event_models() -> tuple[type[ChatEventBase], ...]:
@@ -89,7 +113,8 @@ async def chat(body: ChatRequest, chat_service: ChatServiceDep) -> AsyncIterator
     """Answer from the knowledge base, streamed as SSE.
 
     Sends `sources`, then a `token` per text delta, then `done`; `error` replaces
-    the rest if something fails mid-stream.
+    the rest if something fails mid-stream. A `ticket` event comes before the
+    tokens that confirm it when the user was handed over to human support.
     """
     try:
         documents = await chat_service.find_sources(body.question)
@@ -97,8 +122,9 @@ async def chat(body: ChatRequest, chat_service: ChatServiceDep) -> AsyncIterator
             sources=[Source.model_validate(d, from_attributes=True) for d in documents]
         )
         history = [ChatTurn(role=m.role, content=m.content) for m in body.history]
-        async for delta in chat_service.stream_answer(body.question, documents, history):
-            yield TokenEvent(text=delta)
+        async for event in chat_service.stream_answer(body.question, documents, history):
+            if sse_event := to_sse_event(event):
+                yield sse_event
     except Exception:
         # Headers are already sent, so report the failure in-band.
         logger.exception("chat_failed")

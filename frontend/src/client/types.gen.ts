@@ -123,6 +123,20 @@ export type SourcesEvent = {
 };
 
 /**
+ * TicketEvent
+ */
+export type TicketEvent = {
+    /**
+     * Type
+     */
+    type: 'ticket';
+    /**
+     * Reference
+     */
+    reference: string;
+};
+
+/**
  * TokenEvent
  */
 export type TokenEvent = {
@@ -223,7 +237,7 @@ export type ChatResponses = {
     /**
      * Successful Response
      */
-    200: SourcesEvent | TokenEvent | DoneEvent | ErrorEvent;
+    200: SourcesEvent | TokenEvent | TicketEvent | DoneEvent | ErrorEvent;
 };
 
 export type ChatResponse = ChatResponses[keyof ChatResponses];

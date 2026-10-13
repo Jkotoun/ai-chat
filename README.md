@@ -14,7 +14,8 @@ question ─► embed (bge-small) ─► top-5 cosine search (pgvector) ─► L
 2. **Retrieval**: the question is embedded the same way and the 5 closest documents are found by cosine similarity (HNSW index).
 3. **Answering**: the documents go into the system prompt, and a Groq-hosted LLM (default `openai/gpt-oss-120b`) answers using only that context. The browser sends the last 20 messages along with each question, so follow-ups work; the server keeps no conversation state.
 4. **Streaming**: `POST /chat` returns Server-Sent Events, each a JSON object with a `type`: `sources` first, then a `token` per text chunk, then `done`. If something fails mid-stream, an `error` event replaces the rest. The event types are part of the OpenAPI spec.
-5. **UI**: a Next.js chat page built with MUI shows the answer as it streams in (rendered as Markdown), with the sources as chips under it. It calls the backend through a TypeScript client generated from the OpenAPI spec.
+5. **Escalation**: when the user asks for a human, the LLM asks for their email and calls a `create_ticket` tool. The backend checks that the email is one the user actually wrote, stores a support ticket, sends a `ticket` event with its reference, and the LLM confirms it.
+6. **UI**: a Next.js chat page built with MUI shows the answer as it streams in (rendered as Markdown), with the sources as chips under it and a card with the ticket reference when one was created. It calls the backend through a TypeScript client generated from the OpenAPI spec.
 
 The sample data in `backend/data/` describes a made-up cloud storage service. Swap in your own `faq.json` / `tos.md` and re-run the ingestion.
 
@@ -62,7 +63,7 @@ The frontend reads `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`).
 
 | Endpoint | Description |
 |---|---|
-| `POST /chat` | `{"question": "...", "history": [{"role": "user" \| "assistant", "content": "..."}]}` → SSE stream of `sources`, `token`, `done` / `error` events |
+| `POST /chat` | `{"question": "...", "history": [{"role": "user" \| "assistant", "content": "..."}]}` → SSE stream of `sources`, `token`, `ticket`, `done` / `error` events |
 | `GET /health` | Liveness: the process is up |
 | `GET /health/ready` | Readiness: the database is reachable |
 | `GET /openapi.json` | OpenAPI spec, used to generate the frontend client |
