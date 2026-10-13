@@ -4,6 +4,7 @@ import ChatBubble from "./ChatBubble";
 import MarkdownText from "./MarkdownText";
 import type { Answer } from "./messages";
 import SourceChips from "./SourceChips";
+import TicketCard from "./TicketCard";
 import TypingDots from "./TypingDots";
 
 type AnswerProps = { answer: Answer };
@@ -25,6 +26,7 @@ export default function AssistantMessage({ answer }: AnswerProps) {
           </Typography>
         )}
       </ChatBubble>
+      {answer.ticketReference && <TicketCard reference={answer.ticketReference} />}
       <SourceChips sources={answer.sources} />
     </Stack>
   );
