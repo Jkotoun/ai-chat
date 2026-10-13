@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { streamAnswer } from "./api";
-import { applyEvent, failIfUnfinished, newAnswer, type Answer, type Message } from "./messages";
+import {
+  applyEvent,
+  failIfUnfinished,
+  newAnswer,
+  toHistory,
+  type Answer,
+  type Message,
+} from "./messages";
 
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -18,9 +25,10 @@ export function useChat() {
 
   async function ask(question: string) {
     if (isAnswering) return;
+    const history = toHistory(messages);
     setMessages((prev) => [...prev, { role: "user", text: question }, newAnswer()]);
     try {
-      for await (const event of await streamAnswer(question)) {
+      for await (const event of await streamAnswer(question, history)) {
         updateAnswer((answer) => applyEvent(answer, event));
       }
     } finally {
