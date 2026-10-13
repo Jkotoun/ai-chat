@@ -2,10 +2,10 @@ import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import { useState, type FormEvent } from "react";
+import { PILL_RADIUS } from "./styles";
 
 // Matches the backend's ChatRequest limit.
 const MAX_QUESTION_LENGTH = 2000;
-const PILL_RADIUS = 999;
 
 type QuestionFormProps = { disabled: boolean; onAsk: (question: string) => void };
 

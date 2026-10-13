@@ -19,6 +19,8 @@ export type Message = Question | Answer;
 export const MAX_HISTORY_MESSAGES = 20;
 export const MAX_HISTORY_CONTENT_LENGTH = 4000;
 
+export const ESCALATION_QUESTION = "I'd like to talk to a human support agent.";
+
 export const INTERRUPTED_ERROR = "The answer could not be completed, please try again.";
 
 export function newAnswer(): Answer {
