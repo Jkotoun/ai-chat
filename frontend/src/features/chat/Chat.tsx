@@ -15,7 +15,7 @@ export default function Chat() {
   return (
     <Container maxWidth="md" disableGutters sx={{ height: "100dvh" }}>
       <Stack sx={{ height: 1 }}>
-        <ChatHeader />
+        <ChatHeader disabled={isAnswering} onAsk={ask} />
         <Stack sx={{ flex: 1, overflowY: "auto", px: 2, py: 3 }}>
           {hasMessages ? <MessageList messages={messages} /> : <EmptyState onAsk={ask} />}
         </Stack>
