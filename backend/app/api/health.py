@@ -1,27 +1,18 @@
 import asyncio
-from typing import Literal
 
 import structlog
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.deps import SessionDep
+from app.api.schemas.health import HealthStatus, ReadyStatus
 
 logger = structlog.get_logger()
 
 router = APIRouter(tags=["health"])
 
 READY_TIMEOUT_SECONDS = 2.0
-
-
-class HealthStatus(BaseModel):
-    status: Literal["ok"]
-
-
-class ReadyStatus(BaseModel):
-    status: Literal["ready"]
 
 
 @router.get("/health")

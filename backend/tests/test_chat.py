@@ -5,14 +5,14 @@ import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 
-from app.api.chat import (
+from app.api.deps import get_chat_rate_limiter, get_chat_service
+from app.api.rate_limit import RateLimiter
+from app.api.schemas.chat import (
     MAX_HISTORY_CONTENT_LENGTH,
     MAX_HISTORY_MESSAGES,
     TicketEvent,
     to_sse_event,
 )
-from app.api.deps import get_chat_rate_limiter, get_chat_service
-from app.api.rate_limit import RateLimiter
 from app.services.conversation import ChatTurn
 from app.services.retrieval import RetrievedDocument
 from app.services.tools.base import ToolEvent
